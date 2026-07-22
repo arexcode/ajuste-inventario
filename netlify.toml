@@ -1,0 +1,12 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Adaptador oficial de Next.js para Netlify: habilita App Router,
+# rutas dinámicas, middleware y funciones del servidor. Sin esto,
+# Netlify sirve un sitio estático y las rutas dinámicas dan 404.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_VERSION = "20"
