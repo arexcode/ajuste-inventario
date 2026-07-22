@@ -6,7 +6,7 @@ import type { ConteoDetalle } from "./useConteosDetalle"
 export interface FilaExport {
   empresa: string
   producto: string
-  sku: string
+  skuConId: string
   color: string
   talla: string
   usuario: string
@@ -21,10 +21,13 @@ export function aFilas(conteos: ConteoDetalle[]): FilaExport[] {
     const cantidad = c.cantidad
     const overshark70 = Math.round(cantidad * 0.7)
     const bravos30 = cantidad - overshark70 // Resto para que sume exacto
+    const varianteId = c.variante?.id ?? "—"
+    const sku = c.variante?.sku ?? "—"
+    const skuConId = `${varianteId} | ${sku}`
     return {
       empresa: c.variante?.producto?.empresa?.nombre ?? "—",
       producto: c.variante?.producto?.nombre ?? "—",
-      sku: c.variante?.sku ?? "—",
+      skuConId,
       color: c.variante?.color?.nombre ?? "—",
       talla: c.variante?.talla?.nombre ?? "—",
       usuario: c.usuario?.nombre ?? c.usuario?.email ?? "—",
@@ -39,7 +42,7 @@ export function aFilas(conteos: ConteoDetalle[]): FilaExport[] {
 const ENCABEZADOS = [
   "Empresa",
   "Producto",
-  "SKU",
+  "ID | SKU",
   "Color",
   "Talla",
   "Usuario",
@@ -55,7 +58,7 @@ export function exportarExcel(conteos: ConteoDetalle[], nombre = "conteos") {
     filas.map((f) => ({
       Empresa: f.empresa,
       Producto: f.producto,
-      SKU: f.sku,
+      "ID | SKU": f.skuConId,
       Color: f.color,
       Talla: f.talla,
       Usuario: f.usuario,
@@ -89,7 +92,7 @@ export function exportarPDF(conteos: ConteoDetalle[], nombre = "conteos") {
     body: filas.map((f) => [
       f.empresa,
       f.producto,
-      f.sku,
+      f.skuConId,
       f.color,
       f.talla,
       f.usuario,

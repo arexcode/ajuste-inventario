@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo } from "react"
-import { FileDown, FileSpreadsheet, FileText, Package, Users, Hash, TrendingUp } from "lucide-react" // TrendingUp es para el ícono de distribución
+import { useMemo, useState } from "react"
+import { FileDown, FileSpreadsheet, FileText, Package, Users, Hash, TrendingUp, ArrowUpDown } from "lucide-react"
 import { PageHeader } from "@/components/portal/page-header"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -39,8 +39,25 @@ function StatCard({
   )
 }
 
+type SortField = "producto" | "sku" | "color" | "talla" | "usuario" | "cantidad" | "overshark" | "bravos"
+type SortOrder = "asc" | "desc" | null
+
 export default function ExportacionPage() {
   const { data: conteos, isLoading } = useConteosDetalle()
+  const [sortField, setSortField] = useState<SortField | null>(null)
+  const [sortOrder, setSortOrder] = useState<SortOrder>(null)
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Cicla: asc → desc → null
+      if (sortOrder === "asc") setSortOrder("desc")
+      else if (sortOrder === "desc") setSortOrder(null)
+      else setSortOrder("asc")
+    } else {
+      setSortField(field)
+      setSortOrder("asc")
+    }
+  }
 
   const stats = useMemo(() => {
     const lista = conteos ?? []
@@ -60,6 +77,68 @@ export default function ExportacionPage() {
   }, [conteos])
 
   const hayDatos = (conteos?.length ?? 0) > 0
+
+  const conteosOrdenados = useMemo(() => {
+    if (!conteos || !sortField || !sortOrder) return conteos ?? []
+
+    const sorted = [...conteos].sort((a, b) => {
+      let valA: string | number = ""
+      let valB: string | number = ""
+
+      switch (sortField) {
+        case "producto":
+          valA = a.variante?.producto?.nombre ?? ""
+          valB = b.variante?.producto?.nombre ?? ""
+          break
+        case "sku":
+          valA = a.variante?.id ?? 0
+          valB = b.variante?.id ?? 0
+          break
+        case "color":
+          valA = a.variante?.color?.nombre ?? ""
+          valB = b.variante?.color?.nombre ?? ""
+          break
+        case "talla":
+          valA = a.variante?.talla?.nombre ?? ""
+          valB = b.variante?.talla?.nombre ?? ""
+          break
+        case "usuario":
+          valA = a.usuario?.nombre ?? a.usuario?.email ?? ""
+          valB = b.usuario?.nombre ?? b.usuario?.email ?? ""
+          break
+        case "cantidad":
+          valA = a.cantidad
+          valB = b.cantidad
+          break
+        case "overshark":
+          valA = Math.round(a.cantidad * 0.7)
+          valB = Math.round(b.cantidad * 0.7)
+          break
+        case "bravos":
+          valA = a.cantidad - Math.round(a.cantidad * 0.7)
+          valB = b.cantidad - Math.round(b.cantidad * 0.7)
+          break
+      }
+
+      if (typeof valA === "string") valA = valA.toLowerCase()
+      if (typeof valB === "string") valB = valB.toLowerCase()
+
+      if (valA < valB) return sortOrder === "asc" ? -1 : 1
+      if (valA > valB) return sortOrder === "asc" ? 1 : -1
+      return 0
+    })
+
+    return sorted
+  }, [conteos, sortField, sortOrder])
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="ml-1 h-4 w-4 opacity-30" />
+    return (
+      <span className="ml-1">
+        {sortOrder === "asc" ? "↑" : "↓"}
+      </span>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -129,19 +208,35 @@ export default function ExportacionPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Producto</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Color</TableHead>
-                <TableHead>Talla</TableHead>
-                <TableHead>Usuario</TableHead>
-                <TableHead className="text-right">Cantidad Total</TableHead>
-                <TableHead className="text-right">Overshark (70%)</TableHead>
-                <TableHead className="text-right">Bravos (30%)</TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("producto")}>
+                  Producto <SortIcon field="producto" />
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("sku")}>
+                  SKU <SortIcon field="sku" />
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("color")}>
+                  Color <SortIcon field="color" />
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("talla")}>
+                  Talla <SortIcon field="talla" />
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort("usuario")}>
+                  Usuario <SortIcon field="usuario" />
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/50 text-right" onClick={() => handleSort("cantidad")}>
+                  Cantidad Total <SortIcon field="cantidad" />
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/50 text-right" onClick={() => handleSort("overshark")}>
+                  Overshark (70%) <SortIcon field="overshark" />
+                </TableHead>
+                <TableHead className="cursor-pointer hover:bg-muted/50 text-right" onClick={() => handleSort("bravos")}>
+                  Bravos (30%) <SortIcon field="bravos" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {hayDatos ? (
-                conteos!.map((c) => {
+                conteosOrdenados.map((c) => {
                   const cant = c.cantidad
                   const overshark = Math.round(cant * 0.7)
                   const bravos = cant - overshark
@@ -151,7 +246,7 @@ export default function ExportacionPage() {
                         {c.variante?.producto?.nombre ?? "—"}
                       </TableCell>
                       <TableCell className="font-mono text-xs uppercase text-muted-foreground">
-                        {c.variante?.sku ?? "—"}
+                        {c.variante?.id ?? "—"}
                       </TableCell>
                       <TableCell>{c.variante?.color?.nombre ?? "—"}</TableCell>
                       <TableCell>{c.variante?.talla?.nombre ?? "—"}</TableCell>
