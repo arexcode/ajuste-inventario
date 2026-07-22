@@ -11,20 +11,29 @@ export interface FilaExport {
   talla: string
   usuario: string
   cantidad: number
+  overshark70: number
+  bravos30: number
   fecha: string
 }
 
 export function aFilas(conteos: ConteoDetalle[]): FilaExport[] {
-  return conteos.map((c) => ({
-    empresa: c.variante?.producto?.empresa?.nombre ?? "—",
-    producto: c.variante?.producto?.nombre ?? "—",
-    sku: c.variante?.sku ?? "—",
-    color: c.variante?.color?.nombre ?? "—",
-    talla: c.variante?.talla?.nombre ?? "—",
-    usuario: c.usuario?.nombre ?? c.usuario?.email ?? "—",
-    cantidad: c.cantidad,
-    fecha: new Date(c.created_at).toLocaleString("es"),
-  }))
+  return conteos.map((c) => {
+    const cantidad = c.cantidad
+    const overshark70 = Math.round(cantidad * 0.7)
+    const bravos30 = cantidad - overshark70 // Resto para que sume exacto
+    return {
+      empresa: c.variante?.producto?.empresa?.nombre ?? "—",
+      producto: c.variante?.producto?.nombre ?? "—",
+      sku: c.variante?.sku ?? "—",
+      color: c.variante?.color?.nombre ?? "—",
+      talla: c.variante?.talla?.nombre ?? "—",
+      usuario: c.usuario?.nombre ?? c.usuario?.email ?? "—",
+      cantidad,
+      overshark70,
+      bravos30,
+      fecha: new Date(c.created_at).toLocaleString("es"),
+    }
+  })
 }
 
 const ENCABEZADOS = [
@@ -34,7 +43,9 @@ const ENCABEZADOS = [
   "Color",
   "Talla",
   "Usuario",
-  "Cantidad",
+  "Cantidad Total",
+  "Overshark (70%)",
+  "Bravos (30%)",
   "Fecha",
 ]
 
@@ -48,7 +59,9 @@ export function exportarExcel(conteos: ConteoDetalle[], nombre = "conteos") {
       Color: f.color,
       Talla: f.talla,
       Usuario: f.usuario,
-      Cantidad: f.cantidad,
+      "Cantidad Total": f.cantidad,
+      "Overshark (70%)": f.overshark70,
+      "Bravos (30%)": f.bravos30,
       Fecha: f.fecha,
     }))
   )
@@ -66,9 +79,12 @@ export function exportarPDF(conteos: ConteoDetalle[], nombre = "conteos") {
   doc.setFontSize(9)
   doc.setTextColor(120)
   doc.text(`Generado: ${new Date().toLocaleString("es")}`, 14, 22)
+  doc.setFontSize(8)
+  doc.setTextColor(100)
+  doc.text("Distribución: Overshark 70% | Bravos 30%", 14, 27)
 
   autoTable(doc, {
-    startY: 28,
+    startY: 32,
     head: [ENCABEZADOS],
     body: filas.map((f) => [
       f.empresa,
@@ -78,9 +94,11 @@ export function exportarPDF(conteos: ConteoDetalle[], nombre = "conteos") {
       f.talla,
       f.usuario,
       String(f.cantidad),
+      String(f.overshark70),
+      String(f.bravos30),
       f.fecha,
     ]),
-    styles: { fontSize: 8 },
+    styles: { fontSize: 7 },
     headStyles: { fillColor: [59, 130, 246] },
   })
 

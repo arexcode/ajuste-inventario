@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { FileDown, FileSpreadsheet, FileText, Package, Users, Hash } from "lucide-react"
+import { FileDown, FileSpreadsheet, FileText, Package, Users, Hash, TrendingUp } from "lucide-react" // TrendingUp es para el ícono de distribución
 import { PageHeader } from "@/components/portal/page-header"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -45,11 +45,15 @@ export default function ExportacionPage() {
   const stats = useMemo(() => {
     const lista = conteos ?? []
     const totalUnidades = lista.reduce((acc, c) => acc + c.cantidad, 0)
+    const overshark = Math.round(totalUnidades * 0.7)
+    const bravos = totalUnidades - overshark
     const usuarios = new Set(lista.map((c) => c.usuario?.id).filter(Boolean))
     const variantes = new Set(lista.map((c) => c.variante?.id).filter(Boolean))
     return {
       registros: lista.length,
       totalUnidades,
+      overshark,
+      bravos,
       usuarios: usuarios.size,
       variantes: variantes.size,
     }
@@ -95,6 +99,24 @@ export default function ExportacionPage() {
         <StatCard icon={Package} label="Variantes contadas" value={stats.variantes} />
       </div>
 
+      {/* Distribución de cantidades */}
+      <Card className="border-primary/30 bg-primary/5 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <TrendingUp className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold text-foreground">Distribución de cantidades</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-lg bg-background p-4">
+            <p className="text-2xl font-bold tabular-nums text-foreground">{stats.overshark}</p>
+            <p className="text-sm text-muted-foreground">Overshark (70%)</p>
+          </div>
+          <div className="rounded-lg bg-background p-4">
+            <p className="text-2xl font-bold tabular-nums text-foreground">{stats.bravos}</p>
+            <p className="text-sm text-muted-foreground">Bravos (30%)</p>
+          </div>
+        </div>
+      </Card>
+
       {/* Vista de conteos */}
       <Card className="p-0">
         {isLoading ? (
@@ -112,32 +134,45 @@ export default function ExportacionPage() {
                 <TableHead>Color</TableHead>
                 <TableHead>Talla</TableHead>
                 <TableHead>Usuario</TableHead>
-                <TableHead className="text-right">Cantidad</TableHead>
+                <TableHead className="text-right">Cantidad Total</TableHead>
+                <TableHead className="text-right">Overshark (70%)</TableHead>
+                <TableHead className="text-right">Bravos (30%)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {hayDatos ? (
-                conteos!.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">
-                      {c.variante?.producto?.nombre ?? "—"}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs uppercase text-muted-foreground">
-                      {c.variante?.sku ?? "—"}
-                    </TableCell>
-                    <TableCell>{c.variante?.color?.nombre ?? "—"}</TableCell>
-                    <TableCell>{c.variante?.talla?.nombre ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {c.usuario?.nombre ?? c.usuario?.email ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">
-                      {c.cantidad}
-                    </TableCell>
-                  </TableRow>
-                ))
+                conteos!.map((c) => {
+                  const cant = c.cantidad
+                  const overshark = Math.round(cant * 0.7)
+                  const bravos = cant - overshark
+                  return (
+                    <TableRow key={c.id}>
+                      <TableCell className="font-medium">
+                        {c.variante?.producto?.nombre ?? "—"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs uppercase text-muted-foreground">
+                        {c.variante?.sku ?? "—"}
+                      </TableCell>
+                      <TableCell>{c.variante?.color?.nombre ?? "—"}</TableCell>
+                      <TableCell>{c.variante?.talla?.nombre ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {c.usuario?.nombre ?? c.usuario?.email ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {cant}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-blue-600 dark:text-blue-400">
+                        {overshark}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                        {bravos}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                     Aún no hay conteos registrados
                   </TableCell>
                 </TableRow>
