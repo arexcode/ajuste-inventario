@@ -1,11 +1,12 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Layers } from "lucide-react"
 import { PageHeader } from "@/components/portal/page-header"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { SearchInput } from "@/components/ui/search-input"
 import {
   Table,
   TableBody,
@@ -26,6 +27,7 @@ function stockBadgeVariant(stock: number): "default" | "secondary" | "destructiv
 export default function VariantesPage() {
   const { data: variantes, isLoading } = useVariantes()
   const { data: resumen } = useResumenConteos()
+  const [searchTerm, setSearchTerm] = useState("")
 
   const stockPorVariante = useMemo(() => {
     const m = new Map<number, number>()
@@ -35,11 +37,24 @@ export default function VariantesPage() {
     return m
   }, [resumen])
 
-  const ordenadas = [...(variantes ?? [])].sort((a, b) => {
-    const na = a.producto?.nombre ?? ""
-    const nb = b.producto?.nombre ?? ""
-    return na.localeCompare(nb)
-  })
+  const ordenadas = useMemo(() => {
+    let sorted = [...(variantes ?? [])].sort((a, b) => {
+      const na = a.producto?.nombre ?? ""
+      const nb = b.producto?.nombre ?? ""
+      return na.localeCompare(nb)
+    })
+
+    if (!searchTerm.trim()) return sorted
+
+    const term = searchTerm.toLowerCase()
+    return sorted.filter((v) =>
+      v.id.toString().includes(term) ||
+      v.sku.toLowerCase().includes(term) ||
+      v.producto?.nombre?.toLowerCase().includes(term) ||
+      v.color?.nombre?.toLowerCase().includes(term) ||
+      v.talla?.nombre?.toLowerCase().includes(term)
+    )
+  }, [variantes, searchTerm])
 
   return (
     <div className="space-y-6">
@@ -52,6 +67,12 @@ export default function VariantesPage() {
         <NuevaVarianteDialog />
       </div>
 
+      <SearchInput
+        placeholder="Buscar por ID, SKU, producto, color o talla..."
+        value={searchTerm}
+        onChange={setSearchTerm}
+      />
+
       <Card className="p-0">
         {isLoading ? (
           <div className="space-y-2 p-4">
@@ -63,6 +84,7 @@ export default function VariantesPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>ID</TableHead>
                 <TableHead>Producto</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Color</TableHead>
@@ -76,6 +98,7 @@ export default function VariantesPage() {
                   const stock = stockPorVariante.get(v.id) ?? 0
                   return (
                     <TableRow key={v.id}>
+                      <TableCell className="font-mono text-sm text-muted-foreground">{v.id}</TableCell>
                       <TableCell className="font-medium">
                         {v.producto?.nombre ?? "—"}
                         <span className="block text-xs text-muted-foreground">
@@ -103,8 +126,8 @@ export default function VariantesPage() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                    No hay variantes registradas
+                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                    {searchTerm ? "No hay resultados que coincidan" : "No hay variantes registradas"}
                   </TableCell>
                 </TableRow>
               )}
