@@ -12,6 +12,24 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
+// Script anti-parpadeo: aplica la clase de tema (dark/light) al <html> antes
+// de que React hidrate, leyendo localStorage o la preferencia del sistema.
+// Se renderiza en el <head> del layout (servidor), fuera del árbol de React,
+// por eso no dispara el aviso de "script tag" de React 19.
+const themeScript = `
+(function() {
+  try {
+    var key = 'theme';
+    var stored = localStorage.getItem(key);
+    var theme = stored || 'system';
+    var isDark = theme === 'dark' ||
+      (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+  } catch (e) {}
+})();
+`
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -23,6 +41,9 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn("antialiased", fontMono.variable, "font-sans", roboto.variable)}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
         <Providers>
           <AuthInit>{children}</AuthInit>

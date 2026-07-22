@@ -1,30 +1,70 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import { Building2 } from "lucide-react"
+import { PageHeader } from "@/components/portal/page-header"
+import { Card } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { useEmpresas } from "@/lib/features/inventario/useInventario"
+import { NuevaEmpresaDialog } from "@/components/modales/nueva-empresa-dialog"
 
 export default function EmpresasPage() {
+  const { data: empresas, isLoading } = useEmpresas()
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Empresas</h1>
-          <p className="mt-2 text-slate-600 dark:text-slate-400">
-            Gestiona las empresas del sistema
-          </p>
-        </div>
-        <Button className="gap-2">
-          <Building2 size={20} />
-          Agregar Empresa
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <PageHeader
+          icon={Building2}
+          title="Empresas"
+          description="Empresas registradas en el sistema"
+        />
+        <NuevaEmpresaDialog />
       </div>
 
-      <div className="rounded-lg bg-white p-12 text-center dark:bg-slate-800">
-        <Building2 className="mx-auto mb-4 h-12 w-12 text-slate-400" />
-        <p className="text-slate-600 dark:text-slate-400">
-          Sección de empresas en construcción
-        </p>
-      </div>
+      <Card className="p-0">
+        {isLoading ? (
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead className="text-right">Registrada</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {empresas && empresas.length > 0 ? (
+                empresas.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell className="font-medium">{e.nombre}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {new Date(e.created_at).toLocaleDateString("es")}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={2} className="py-10 text-center text-muted-foreground">
+                    No hay empresas registradas
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
     </div>
   )
 }

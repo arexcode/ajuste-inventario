@@ -1,30 +1,93 @@
 "use client"
 
 import * as React from "react"
-import dynamic from "next/dynamic"
-import { useTheme } from "next-themes"
 
-const NextThemesProvider = dynamic(
-  () => import("next-themes").then((mod) => mod.ThemeProvider),
-  { ssr: false }
-)
+// Provider de tema propio (sin next-themes) para evitar el aviso de React 19
+// sobre <script> dentro del árbol. El script anti-parpadeo vive en el <head>
+// del layout (servidor); aquí solo gestionamos el estado y lo sincronizamos
+// con la clase `dark` del <html> y con localStorage bajo la clave "theme".
 
-function ThemeProvider({
-  children,
-  ...props
-}: React.ComponentProps<typeof NextThemesProvider>) {
+type Theme = "light" | "dark" | "system"
+type ResolvedTheme = "light" | "dark"
+
+type ThemeContextValue = {
+  theme: Theme
+  resolvedTheme: ResolvedTheme
+  setTheme: (theme: Theme) => void
+}
+
+const STORAGE_KEY = "theme"
+
+const ThemeContext = React.createContext<ThemeContextValue | undefined>(undefined)
+
+function getSystemTheme(): ResolvedTheme {
+  if (typeof window === "undefined") return "light"
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+}
+
+function resolve(theme: Theme, system: ResolvedTheme): ResolvedTheme {
+  return theme === "system" ? system : theme
+}
+
+function applyTheme(resolved: ResolvedTheme) {
+  const root = document.documentElement
+  root.classList.toggle("dark", resolved === "dark")
+  root.style.colorScheme = resolved
+}
+
+function ThemeProvider({ children }: { children: React.ReactNode }) {
+  // Estado inicial "system" en servidor; el script del <head> ya aplicó la
+  // clase real antes de la hidratación, así que no hay parpadeo.
+  const [theme, setThemeState] = React.useState<Theme>("system")
+  const [systemTheme, setSystemTheme] = React.useState<ResolvedTheme>("light")
+
+  // Al montar, leemos la preferencia guardada y el tema del sistema.
+  React.useEffect(() => {
+    const stored = (localStorage.getItem(STORAGE_KEY) as Theme | null) ?? "system"
+    setThemeState(stored)
+    setSystemTheme(getSystemTheme())
+
+    const mq = window.matchMedia("(prefers-color-scheme: dark)")
+    const onChange = () => setSystemTheme(mq.matches ? "dark" : "light")
+    mq.addEventListener("change", onChange)
+    return () => mq.removeEventListener("change", onChange)
+  }, [])
+
+  const resolvedTheme = resolve(theme, systemTheme)
+
+  // Sincroniza la clase del <html> cuando cambia el tema resuelto.
+  React.useEffect(() => {
+    applyTheme(resolvedTheme)
+  }, [resolvedTheme])
+
+  const setTheme = React.useCallback((next: Theme) => {
+    setThemeState(next)
+    try {
+      localStorage.setItem(STORAGE_KEY, next)
+    } catch {
+      // localStorage puede fallar (modo privado); ignoramos.
+    }
+  }, [])
+
+  const value = React.useMemo<ThemeContextValue>(
+    () => ({ theme, resolvedTheme, setTheme }),
+    [theme, resolvedTheme, setTheme]
+  )
+
   return (
-    <NextThemesProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-      {...props}
-    >
+    <ThemeContext.Provider value={value}>
       <ThemeHotkey />
       {children}
-    </NextThemesProvider>
+    </ThemeContext.Provider>
   )
+}
+
+function useTheme(): ThemeContextValue {
+  const ctx = React.useContext(ThemeContext)
+  if (!ctx) {
+    throw new Error("useTheme debe usarse dentro de <ThemeProvider>")
+  }
+  return ctx
 }
 
 function isTypingTarget(target: EventTarget | null) {
@@ -74,4 +137,4 @@ function ThemeHotkey() {
   return null
 }
 
-export { ThemeProvider }
+export { ThemeProvider, useTheme }

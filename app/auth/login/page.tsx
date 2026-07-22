@@ -6,8 +6,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/features/auth/authHooks"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, Loader2, Boxes } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -20,145 +19,138 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-
     const result = await signIn(email, password)
     if (result.success) {
       router.push("/portal")
     }
-
     setIsLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8">
-        {/* Header */}
-        <div className="space-y-3 text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600 text-white mb-2">
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Bienvenido</h1>
-          <p className="text-slate-600 dark:text-slate-400">Sistema de Ajuste Inventario</p>
+    <div className="grid min-h-screen lg:grid-cols-2">
+      {/* Panel decorativo */}
+      <div className="relative hidden overflow-hidden bg-primary lg:flex lg:flex-col lg:justify-between lg:p-12">
+        <div
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 20% 30%, var(--primary-foreground) 0, transparent 40%), radial-gradient(circle at 80% 70%, var(--primary-foreground) 0, transparent 35%)",
+          }}
+        />
+        <div className="relative flex items-center gap-2 text-primary-foreground">
+          <Boxes className="h-7 w-7" />
+          <span className="text-lg font-semibold">Sistema de Ajuste</span>
         </div>
+        <div className="relative space-y-4 text-primary-foreground">
+          <h2 className="text-3xl font-bold leading-tight">
+            Gestiona tu inventario<br />de forma inteligente
+          </h2>
+          <p className="max-w-md text-primary-foreground/80">
+            Controla productos, variantes, colores y tallas en un solo lugar.
+            Rápido, seguro y siempre sincronizado.
+          </p>
+        </div>
+        <div className="relative text-sm text-primary-foreground/60">
+          © {new Date().getFullYear()} Sistema de Ajuste Inventario
+        </div>
+      </div>
 
-        {/* Form Card */}
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="space-y-1">
-            <CardTitle>Iniciar sesión</CardTitle>
-            <CardDescription>
+      {/* Formulario */}
+      <div className="flex items-center justify-center bg-background p-6 sm:p-12">
+        <div className="w-full max-w-sm space-y-8">
+          {/* Logo mobile */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Boxes className="h-5 w-5" />
+            </div>
+            <span className="text-lg font-semibold text-foreground">Sistema de Ajuste</span>
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Bienvenido de nuevo
+            </h1>
+            <p className="text-sm text-muted-foreground">
               Ingresa tus credenciales para acceder al sistema
-            </CardDescription>
-          </CardHeader>
+            </p>
+          </div>
 
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Email Field */}
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                  Correo electrónico
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@email.com"
-                    required
-                    className="pl-10 bg-white dark:bg-slate-800"
-                    disabled={isLoading}
-                  />
-                </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium text-foreground">
+                Correo electrónico
+              </label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@email.com"
+                  required
+                  className="pl-10"
+                  disabled={isLoading}
+                />
               </div>
+            </div>
 
-              {/* Password Field */}
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                  Contraseña
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="pl-10 pr-10 bg-white dark:bg-slate-800"
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                    disabled={isLoading}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className="rounded-lg bg-red-50 dark:bg-red-950/30 p-3 border border-red-200 dark:border-red-800">
-                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-10 text-base font-medium"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Iniciando sesión...
-                  </>
-                ) : (
-                  "Iniciar sesión"
-                )}
-              </Button>
-
-              {/* Divider */}
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200 dark:border-slate-700" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white dark:bg-slate-950 px-2 text-slate-500 dark:text-slate-400">
-                    o
-                  </span>
-                </div>
-              </div>
-
-              {/* Signup Link */}
-              <p className="text-center text-sm text-slate-600 dark:text-slate-400">
-                ¿No tienes cuenta?{" "}
-                <Link
-                  href="/auth/signup"
-                  className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium text-foreground">
+                Contraseña
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="pl-10 pr-10"
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                  disabled={isLoading}
+                  tabIndex={-1}
                 >
-                  Crea una cuenta
-                </Link>
-              </p>
-            </form>
-          </CardContent>
-        </Card>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-slate-500 dark:text-slate-500">
-          Plataforma segura de gestión de inventario
-        </p>
+            {error && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
+
+            <Button type="submit" disabled={isLoading} className="w-full" size="lg">
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Iniciando sesión...
+                </>
+              ) : (
+                "Iniciar sesión"
+              )}
+            </Button>
+          </form>
+
+          <p className="text-center text-sm text-muted-foreground">
+            ¿No tienes cuenta?{" "}
+            <Link
+              href="/auth/signup"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Crea una cuenta
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   )

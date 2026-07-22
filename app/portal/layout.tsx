@@ -10,12 +10,10 @@ export default function PortalLayout({
 }) {
   return (
     <ProtectedRoute>
-      <div className="flex">
+      <div className="min-h-screen bg-muted/30">
         <Sidebar />
-        <main className="flex-1">
-          <div className="p-6">
-            {children}
-          </div>
+        <main className="md:pl-64">
+          <div className="mx-auto max-w-7xl p-4 pt-16 md:p-8 md:pt-8">{children}</div>
         </main>
       </div>
     </ProtectedRoute>

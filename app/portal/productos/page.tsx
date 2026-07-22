@@ -1,30 +1,71 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import { Package } from "lucide-react"
+import { PageHeader } from "@/components/portal/page-header"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { useProductos } from "@/lib/features/catalogos/useCatalogos"
+import { NuevoProductoDialog } from "@/components/modales/nuevo-producto-dialog"
 
 export default function ProductosPage() {
+  const { data: productos, isLoading } = useProductos()
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Productos</h1>
-          <p className="mt-2 text-slate-600 dark:text-slate-400">
-            Gestiona el catálogo de productos
-          </p>
-        </div>
-        <Button className="gap-2">
-          <Package size={20} />
-          Agregar Producto
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <PageHeader
+          icon={Package}
+          title="Productos"
+          description="Catálogo de productos por empresa"
+        />
+        <NuevoProductoDialog />
       </div>
 
-      <div className="rounded-lg bg-white p-12 text-center dark:bg-slate-800">
-        <Package className="mx-auto mb-4 h-12 w-12 text-slate-400" />
-        <p className="text-slate-600 dark:text-slate-400">
-          Sección de productos en construcción
-        </p>
-      </div>
+      <Card className="p-0">
+        {isLoading ? (
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Producto</TableHead>
+                <TableHead>Empresa</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {productos && productos.length > 0 ? (
+                productos.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.nombre}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{p.empresa?.nombre ?? "Sin empresa"}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={2} className="py-10 text-center text-muted-foreground">
+                    No hay productos registrados
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
     </div>
   )
 }

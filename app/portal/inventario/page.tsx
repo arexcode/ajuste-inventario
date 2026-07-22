@@ -1,152 +1,222 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useMemo, useState } from "react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Package, Trash2, Edit2 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  ProductoMatrizCard,
+  type CeldaSeleccionada,
+} from "@/components/inventario/producto-matriz-card"
+import { ConteoDialog } from "@/components/inventario/conteo-dialog"
+import {
+  useEmpresas,
+  useVariantes,
+  useResumenConteos,
+  useMisConteos,
+} from "@/lib/features/inventario/useInventario"
+import { useUsuarioActual } from "@/lib/features/auth/useUsuarioActual"
+import { agruparEnMatrices } from "@/lib/features/inventario/matriz"
+import {
+  Search,
+  Boxes,
+  ChevronLeft,
+  ChevronRight,
+  AlertCircle,
+  PackageOpen,
+} from "lucide-react"
 
-interface Product {
-  id: string
-  name: string
-  description?: string
-  price?: number
-  stock?: number
-}
+const PAGE_SIZE = 8
+const TODAS = "todas"
 
 export default function InventarioPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data: empresas, isLoading: loadingEmpresas } = useEmpresas()
+  const { data: variantes, isLoading, isError, error, refetch } = useVariantes()
+  const { data: resumen } = useResumenConteos()
+  const { data: usuario } = useUsuarioActual()
+  const { data: misConteos } = useMisConteos(usuario?.id)
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setIsLoading(true)
-        const supabase = createClient()
-        const { data, error: dbError } = await supabase
-          .from("product")
-          .select("*")
-          .order("created_at", { ascending: false })
+  const [busqueda, setBusqueda] = useState("")
+  const [empresaId, setEmpresaId] = useState<string>(TODAS)
+  const [pagina, setPagina] = useState(1)
+  const [celda, setCelda] = useState<CeldaSeleccionada | null>(null)
 
-        if (dbError) throw dbError
-        setProducts(data || [])
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Error al cargar productos"
-        setError(message)
-      } finally {
-        setIsLoading(false)
-      }
-    }
+  // Mapa variante_id → mi conteo (para prellenar el modal).
+  const misConteosMap = useMemo(() => {
+    const m = new Map<number, number>()
+    for (const c of misConteos ?? []) m.set(c.variante_id, c.cantidad)
+    return m
+  }, [misConteos])
 
-    fetchProducts()
-  }, [])
+  // Agrupa variantes + resumen en matrices por producto.
+  // Las celdas muestran el conteo individual del usuario (misConteosMap);
+  // el total acumulado de todos queda en el encabezado del producto.
+  const matrices = useMemo(
+    () => (variantes ? agruparEnMatrices(variantes, resumen ?? [], misConteosMap) : []),
+    [variantes, resumen, misConteosMap]
+  )
+
+  const filtradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase()
+    return matrices.filter((m) => {
+      const coincideNombre = q === "" || m.productoNombre.toLowerCase().includes(q)
+      const coincideEmpresa = empresaId === TODAS || String(m.empresaId) === empresaId
+      return coincideNombre && coincideEmpresa
+    })
+  }, [matrices, busqueda, empresaId])
+
+  const totalPaginas = Math.max(1, Math.ceil(filtradas.length / PAGE_SIZE))
+  const paginaSegura = Math.min(pagina, totalPaginas)
+  const visibles = filtradas.slice(
+    (paginaSegura - 1) * PAGE_SIZE,
+    paginaSegura * PAGE_SIZE
+  )
+
+  const onBuscar = (v: string) => {
+    setBusqueda(v)
+    setPagina(1)
+  }
+  const onEmpresa = (v: string | null) => {
+    setEmpresaId(v ?? TODAS)
+    setPagina(1)
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Encabezado */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Boxes className="h-6 w-6" />
+        </div>
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Inventario</h1>
-          <p className="mt-2 text-slate-600 dark:text-slate-400">
-            Gestiona todos los productos de tu inventario
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Inventario</h1>
+          <p className="text-sm text-muted-foreground">
+            Haz clic en una celda para registrar tu conteo
           </p>
         </div>
-        <Button className="gap-2">
-          <Package size={20} />
-          Agregar Producto
-        </Button>
       </div>
 
-      {error && (
-        <div className="rounded-lg bg-red-500/10 p-4 text-red-600 dark:text-red-400">
-          {error}
+      {/* Filtros */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={busqueda}
+            onChange={(e) => onBuscar(e.target.value)}
+            placeholder="Buscar producto por nombre..."
+            className="pl-10"
+          />
         </div>
-      )}
+        <Select value={empresaId} onValueChange={onEmpresa}>
+          <SelectTrigger className="h-10 w-full sm:w-56">
+            <SelectValue placeholder="Todas las empresas" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODAS}>Todas las empresas</SelectItem>
+            {empresas?.map((e) => (
+              <SelectItem key={e.id} value={String(e.id)}>
+                {e.nombre}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center rounded-lg bg-slate-100 p-12 dark:bg-slate-800">
-          <div className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-slate-300 border-t-blue-500 dark:border-slate-600 dark:border-t-blue-400"></div>
-            <p className="text-slate-600 dark:text-slate-400">Cargando productos...</p>
+      {/* Estados */}
+      {isError ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 py-16 text-center">
+          <AlertCircle className="h-10 w-10 text-destructive" />
+          <div>
+            <p className="font-medium text-foreground">Error al cargar el inventario</p>
+            <p className="text-sm text-muted-foreground">
+              {error instanceof Error ? error.message : "Intenta nuevamente"}
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => refetch()}>
+            Reintentar
+          </Button>
+        </div>
+      ) : isLoading || loadingEmpresas ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-56 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : filtradas.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border py-16 text-center">
+          <PackageOpen className="h-10 w-10 text-muted-foreground" />
+          <div>
+            <p className="font-medium text-foreground">Sin resultados</p>
+            <p className="text-sm text-muted-foreground">
+              {busqueda || empresaId !== TODAS
+                ? "Ajusta la búsqueda o el filtro de empresa"
+                : "Aún no hay variantes registradas"}
+            </p>
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg bg-white dark:bg-slate-800 shadow">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 dark:bg-slate-700">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">
-                    Nombre
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">
-                    Descripción
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">
-                    Precio
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">
-                    Stock
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {products.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
-                      <Package className="mx-auto mb-2 h-12 w-12 text-slate-400" />
-                      <p className="text-slate-600 dark:text-slate-400">
-                        No hay productos en el inventario
-                      </p>
-                    </td>
-                  </tr>
-                ) : (
-                  products.map((product) => (
-                    <tr
-                      key={product.id}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                    >
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">
-                        {product.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
-                        {product.description || "-"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-900 dark:text-white">
-                        ${product.price?.toFixed(2) || "0.00"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
-                        {product.stock ?? "-"}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-2"
-                          >
-                            <Edit2 size={16} />
-                            Editar
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10"
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+        <>
+          <div className="grid gap-4 md:grid-cols-2">
+            {visibles.map((m) => (
+              <ProductoMatrizCard
+                key={m.productoId}
+                producto={m}
+                onCeldaClick={setCelda}
+              />
+            ))}
           </div>
-        </div>
+
+          {/* Paginación */}
+          <div className="flex items-center justify-between border-t border-border pt-4">
+            <p className="text-sm text-muted-foreground">
+              Mostrando{" "}
+              <span className="font-medium text-foreground">
+                {(paginaSegura - 1) * PAGE_SIZE + 1}–
+                {Math.min(paginaSegura * PAGE_SIZE, filtradas.length)}
+              </span>{" "}
+              de <span className="font-medium text-foreground">{filtradas.length}</span> productos
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                disabled={paginaSegura <= 1}
+                aria-label="Página anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="min-w-20 text-center text-sm text-muted-foreground">
+                {paginaSegura} / {totalPaginas}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                disabled={paginaSegura >= totalPaginas}
+                aria-label="Página siguiente"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </>
       )}
+
+      {/* Modal de conteo */}
+      <ConteoDialog
+        celda={celda}
+        usuarioId={usuario?.id}
+        miConteoPrevio={celda ? misConteosMap.get(celda.varianteId) : undefined}
+        onClose={() => setCelda(null)}
+      />
     </div>
   )
 }

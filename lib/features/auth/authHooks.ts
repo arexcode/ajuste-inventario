@@ -10,12 +10,17 @@ export function useAuth() {
   const supabase = createClient()
 
   const signUp = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, nombre: string) => {
       try {
         dispatch(clearError())
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          // `nombre` llega a raw_user_meta_data; el trigger
+          // crear_usuario_automatico lo lee para poblar usuarios.nombre.
+          options: {
+            data: { nombre },
+          },
         })
 
         if (signUpError) throw signUpError
